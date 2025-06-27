@@ -99,7 +99,7 @@ function Chatbot() {
     setInput('');
 
     try {
-      const response = await fetch('/api/v1/chat/ask', {
+      const response = await fetch('https://pakistani-panorama-backend.onrender.com/api/v1/chat/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userInput })
