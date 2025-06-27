@@ -1,4 +1,4 @@
-import { Place } from './emergency.types';
+import type { Place } from './emergency.types';
 
 export interface HistoricalPlace extends Place {
   editorialSummary?: {
