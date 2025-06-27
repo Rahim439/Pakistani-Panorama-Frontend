@@ -10,7 +10,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'https://pakistani-panorama-backend.onrender.com',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path,
