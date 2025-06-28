@@ -31,7 +31,7 @@ interface UserAuthProviderProps {
   children: ReactNode;
 }
 
-const API_URL = "http://localhost:5000/api/v1";
+const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`;
 
 export function UserAuthProvider({ children }: UserAuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
