@@ -3,7 +3,7 @@ import React from 'react';
 const GoogleLoginButton = () => {
   const handleGoogleLogin = () => {
     // Redirect to your backend's Google auth endpoint
-    window.location.href = '/api/v1/auth/google';
+    window.location.href = `${import.meta.env.VITE_BACKEND_URL}/api/v1/auth/google`;
   };
 
   return (

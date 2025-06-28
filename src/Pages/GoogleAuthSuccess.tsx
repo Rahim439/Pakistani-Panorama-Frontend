@@ -21,7 +21,7 @@ const GoogleAuthSuccess = () => {
         }
 
         // Call your API to get user details using the token
-        const response = await fetch('/api/v1/users/current-user', {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/users/current-user`, {
           headers: {
             'Authorization': `Bearer ${token}`
           },

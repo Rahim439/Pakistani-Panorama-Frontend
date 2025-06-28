@@ -42,7 +42,7 @@ const ResetPassword = () => {
     setError("");
     
     try {
-      const response = await fetch(`/api/v1/users/reset-password/${token}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/users/reset-password/${token}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -21,7 +21,7 @@ const ForgotPassword = () => {
     setSuccess("");
     
     try {
-      const response = await fetch('/api/v1/users/forgot-password', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/users/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

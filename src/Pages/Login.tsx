@@ -38,7 +38,7 @@ const Login = () => {
     
     try {
       console.log('Sending login request...');
-      const response = await fetch('/api/v1/users/login', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/users/login`, {
         method: 'POST',
         credentials: 'include', 
         headers: {
