@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 // Use a constant for the API base URL
-const API_BASE_URL = '/api/v1'; // Use the proxy configured in vite.config.ts
+const API_BASE_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1`; // Use the proxy configured in vite.config.ts
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
