@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw, MapPin, Building2, UtensilsCrossed, Gamepad2, Search, X } from 'lucide-react';
 import type { Attraction, AttractionCategory } from '../types/attractions.types';
 import AttractionCard from '../components/AttractionCard/AttractionCard';
@@ -14,22 +14,14 @@ interface PaginationInfo {
   hasPrevPage: boolean;
 }
 
-const ITEMS_PER_PAGE = 20;
-
 const Attractions: React.FC = () => {
   const [attractions, setAttractions] = useState<Attraction[]>([]);
-  const [allAttractions, setAllAttractions] = useState<Attraction[]>([]);
-  const [allDataLoaded, setAllDataLoaded] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [searchLoading, setSearchLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<AttractionCategory>('hotels');
   const [selectedAttraction, setSelectedAttraction] = useState<Attraction | null>(null);
   const [dataSource, setDataSource] = useState<string>('');
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
-  const [page, setPage] = useState<number>(1);
-  const [limit] = useState<number>(20);
-  const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Search states
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -37,17 +29,9 @@ const Attractions: React.FC = () => {
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
   useEffect(() => {
-    setPage(1);
-    setCurrentPage(1);
     setSearchQuery('');
     setIsSearching(false);
-    setAllAttractions([]);
-    setAllDataLoaded(false);
-    fetchAttractions(1);
-  }, [activeCategory]);
-
-  useEffect(() => {
-    setCurrentPage(1);
+    fetchAttractions();
   }, [activeCategory]);
 
   // Helper function to safely get text from object or string
@@ -57,22 +41,16 @@ const Attractions: React.FC = () => {
     return '';
   };
 
-  // Fetch only current page (default) or all data (for search)
-  const fetchAttractions = async (pageNumber: number = page, fetchAll: boolean = false) => {
-    if (fetchAll) {
-      setSearchLoading(true);
-    } else {
-      setLoading(true);
-    }
+  // Fetch all data for the selected category
+  const fetchAttractions = async () => {
+    setLoading(true);
     setError(null);
 
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
       const endpoint = activeCategory === 'amusement_park' ? 'amusement-parks' : activeCategory;
-      const fetchLimit = fetchAll ? 1000 : limit;
-      const fetchPage = fetchAll ? 1 : pageNumber;
-
-      const response = await fetch(`${backendUrl}/api/v1/attractions/${endpoint}?page=${fetchPage}&limit=${fetchLimit}`);
+      // Fetch a large number to get all results
+      const response = await fetch(`${backendUrl}/api/v1/attractions/${endpoint}?page=1&limit=1000`);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData?.message || `Server returned ${response.status}`);
@@ -82,25 +60,19 @@ const Attractions: React.FC = () => {
       let attractionsData: Attraction[] = [];
       if (activeCategory === 'hotels' && data.data?.hotels) {
         attractionsData = data.data.hotels;
-        if (!fetchAll) setPagination(data.data.pagination);
+        setPagination(data.data.pagination);
       } else if (activeCategory === 'restaurants' && data.data?.restaurants) {
         attractionsData = data.data.restaurants;
-        if (!fetchAll) setPagination(data.data.pagination);
+        setPagination(data.data.pagination);
       } else if (activeCategory === 'amusement_park' && data.data?.amusementParks) {
         attractionsData = data.data.amusementParks;
-        if (!fetchAll) setPagination(data.data.pagination);
+        setPagination(data.data.pagination);
       } else {
         throw new Error('Invalid data format from server');
       }
 
-      if (fetchAll) {
-        setAllAttractions(attractionsData);
-        setAllDataLoaded(true);
-      } else {
-        setAttractions(attractionsData);
-        setFilteredAttractions(attractionsData);
-        setPage(pageNumber);
-      }
+      setAttractions(attractionsData);
+      setFilteredAttractions(attractionsData);
 
       if (data.message && data.message.includes("cache")) {
         setDataSource('Redis Cache');
@@ -110,25 +82,16 @@ const Attractions: React.FC = () => {
     } catch (error: any) {
       setError(error.message || 'Failed to load attractions');
     } finally {
-      if (fetchAll) {
-        setSearchLoading(false);
-      } else {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
-  // Search effect: fetch all data if needed, then filter
+  // Search effect: filter attractions
   useEffect(() => {
     if (searchQuery.trim()) {
       setIsSearching(true);
-      setCurrentPage(1);
-      if (!allDataLoaded && !searchLoading) {
-        fetchAttractions(1, true);
-        return;
-      }
       const query = searchQuery.toLowerCase().trim();
-      const filtered = allAttractions.filter(attraction => {
+      const filtered = attractions.filter(attraction => {
         const nameMatch = getTextContent(attraction.displayName).toLowerCase().includes(query);
         const addressMatch = (attraction.formattedAddress || '').toLowerCase().includes(query);
         const summaryMatch = getTextContent(attraction.editorialSummary).toLowerCase().includes(query);
@@ -140,22 +103,7 @@ const Attractions: React.FC = () => {
       setFilteredAttractions(attractions);
       setIsSearching(false);
     }
-  }, [searchQuery, attractions, allAttractions, allDataLoaded, searchLoading]);
-
-  // When all data is loaded for search, re-filter
-  useEffect(() => {
-    if (isSearching && searchQuery.trim() && allDataLoaded) {
-      const query = searchQuery.toLowerCase().trim();
-      const filtered = allAttractions.filter(attraction => {
-        const nameMatch = getTextContent(attraction.displayName).toLowerCase().includes(query);
-        const addressMatch = (attraction.formattedAddress || '').toLowerCase().includes(query);
-        const summaryMatch = getTextContent(attraction.editorialSummary).toLowerCase().includes(query);
-        const typeMatch = getTextContent(attraction.primaryTypeDisplayName).toLowerCase().includes(query);
-        return nameMatch || addressMatch || summaryMatch || typeMatch;
-      });
-      setFilteredAttractions(filtered);
-    }
-  }, [allAttractions, allDataLoaded, isSearching, searchQuery]);
+  }, [searchQuery, attractions]);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -168,31 +116,6 @@ const Attractions: React.FC = () => {
   const clearSearch = () => {
     setSearchQuery('');
     setIsSearching(false);
-  };
-
-  // Paginate the attractions
-  const paginatedAttractions = useMemo(() => {
-    const attractionsToUse = isSearching ? filteredAttractions : attractions;
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return attractionsToUse.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [isSearching, filteredAttractions, attractions, currentPage]);
-
-  const totalPages = useMemo(() => {
-    const attractionsToUse = isSearching ? filteredAttractions : attractions;
-    return Math.ceil(attractionsToUse.length / ITEMS_PER_PAGE);
-  }, [isSearching, filteredAttractions, attractions]);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Backend pagination for non-search results
-  const handleBackendPageChange = (newPage: number) => {
-    if (isSearching) return;
-    setPage(newPage);
-    fetchAttractions(newPage);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const getCategoryInfo = (category: AttractionCategory) => {
@@ -226,7 +149,7 @@ const Attractions: React.FC = () => {
               <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm text-white">
                 <span>Data source: {dataSource}</span>
                 <button 
-                  onClick={() => fetchAttractions(1)} 
+                  onClick={() => fetchAttractions()} 
                   className="ml-3 p-1.5 rounded-full hover:bg-white/10 transition-colors"
                   title="Refresh data"
                   aria-label="Refresh data"
@@ -252,7 +175,7 @@ const Attractions: React.FC = () => {
               aria-label={`Search ${getCategoryInfo(activeCategory).title.toLowerCase()} by name`}
               value={searchQuery}
               onChange={handleSearchChange}
-              disabled={searchLoading}
+              disabled={loading}
             />
             {searchQuery && (
               <button 
@@ -260,7 +183,7 @@ const Attractions: React.FC = () => {
                 onClick={clearSearch}
                 className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 mr-1"
                 aria-label="Clear search"
-                disabled={searchLoading}
+                disabled={loading}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -268,7 +191,7 @@ const Attractions: React.FC = () => {
             <button 
               type="submit"
               className="bg-green-600 hover:bg-green-700 text-white font-medium rounded-full py-2 px-6 text-sm transition-colors"
-              disabled={searchLoading}
+              disabled={loading}
             >
               Search
             </button>
@@ -279,13 +202,13 @@ const Attractions: React.FC = () => {
         {isSearching && (
           <div className="mb-6 flex items-center justify-between px-4">
             <div className="text-sm text-gray-600">
-              {searchLoading
+              {loading
                 ? 'Loading all attractions for search...'
                 : <>Found <span className="font-medium">{filteredAttractions.length}</span> {getCategoryInfo(activeCategory).title.toLowerCase()}
                 with name containing "<span className="font-medium">{searchQuery}</span>"</>
               }
             </div>
-            {!searchLoading && (
+            {!loading && (
               <button 
                 onClick={clearSearch}
                 className="text-sm text-green-700 hover:text-green-800 flex items-center"
@@ -307,7 +230,7 @@ const Attractions: React.FC = () => {
                 <button
                   key={category}
                   onClick={() => setActiveCategory(category)}
-                  disabled={loading || searchLoading}
+                  disabled={loading}
                   className={`flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 disabled:opacity-50 ${
                     isActive
                       ? 'bg-green-600 text-white shadow-lg transform scale-105'
@@ -341,24 +264,24 @@ const Attractions: React.FC = () => {
             <div className="text-sm text-gray-600">
               {isSearching 
                 ? `${filteredAttractions.length} result${filteredAttractions.length !== 1 ? 's' : ''}`
-                : `Page ${page} of ${pagination?.totalPages || 1} (${pagination?.totalItems || attractions.length} total)`
+                : `${attractions.length} total`
               }
             </div>
           )}
         </div>
 
         {/* Loading State */}
-        {(loading || searchLoading) && (
+        {loading && (
           <div className="flex flex-col items-center justify-center py-32">
             <div className="spinner"></div>
             <p className="mt-6 text-green-700 font-medium">
-              {searchLoading ? 'Loading all attractions for search...' : 'Loading amazing attractions...'}
+              Loading amazing attractions...
             </p>
           </div>
         )}
 
         {/* Error State */}
-        {error && !loading && !searchLoading && (
+        {error && !loading && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 my-8">
             <div className="flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
@@ -369,7 +292,7 @@ const Attractions: React.FC = () => {
               <h3 className="text-lg font-medium text-red-800 mb-2">Unable to load attractions</h3>
               <p className="text-red-600">{error}</p>
               <button 
-                onClick={() => fetchAttractions(1)}
+                onClick={() => fetchAttractions()}
                 className="mt-4 px-5 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors flex items-center"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -380,7 +303,7 @@ const Attractions: React.FC = () => {
         )}
 
         {/* Empty state */}
-        {!loading && !error && paginatedAttractions.length === 0 && (
+        {!loading && !error && filteredAttractions.length === 0 && (
           <div className="text-center py-32">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-5">
               {(() => {
@@ -407,7 +330,7 @@ const Attractions: React.FC = () => {
               </button>
             ) : (
               <button 
-                onClick={() => fetchAttractions(1)}
+                onClick={() => fetchAttractions()}
                 className="mt-5 px-5 py-2.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors inline-flex items-center"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -417,11 +340,11 @@ const Attractions: React.FC = () => {
           </div>
         )}
 
-        {!loading && !error && paginatedAttractions.length > 0 && (
+        {!loading && !error && filteredAttractions.length > 0 && (
           <>
             {/* Attractions grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {paginatedAttractions.map((attraction, index) => (
+              {filteredAttractions.map((attraction, index) => (
                 <div 
                   key={attraction.id} 
                   className="animate-fadeIn" 
@@ -435,36 +358,6 @@ const Attractions: React.FC = () => {
                 </div>
               ))}
             </div>
-            
-            {/* Results summary and pagination */}
-            <div className="mt-12 mb-6 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="px-6 py-3 bg-white border border-gray-200 rounded-full shadow-sm">
-                <p className="text-sm text-gray-600">
-                  Showing <span className="font-medium text-gray-900">{paginatedAttractions.length}</span> of <span className="font-medium text-gray-900">
-                  {isSearching ? filteredAttractions.length : attractions.length}</span> {getCategoryInfo(activeCategory).title.toLowerCase()}
-                  {isSearching && <span className="ml-1">named "<span className="text-green-700">{searchQuery}</span>"</span>}
-                </p>
-              </div>
-              {totalPages > 1 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                  itemsPerPage={ITEMS_PER_PAGE}
-                  totalItems={isSearching ? filteredAttractions.length : attractions.length}
-                />
-              )}
-            </div>
-            {/* Backend pagination - Only show for non-search results */}
-            {!isSearching && pagination && pagination.totalPages > 1 && (
-              <Pagination
-                currentPage={pagination.currentPage}
-                totalPages={pagination.totalPages}
-                onPageChange={handleBackendPageChange}
-                itemsPerPage={pagination.itemsPerPage}
-                totalItems={pagination.totalItems}
-              />
-            )}
           </>
         )}
       </div>
