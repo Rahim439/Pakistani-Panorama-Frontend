@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, MapPin, Building2, UtensilsCrossed, Gamepad2, Search, X } from 'lucide-react';
+import { RefreshCw, MapPin, Building2, UtensilsCrossed, Gamepad2, Search, X, MapPinIcon } from 'lucide-react';
 import type { Attraction, AttractionCategory } from '../types/attractions.types';
 import AttractionCard from '../components/AttractionCard/AttractionCard';
 import AttractionDetail from '../components/AttractionDetail/AttractionDetail';
@@ -28,11 +28,24 @@ const Attractions: React.FC = () => {
   const [filteredAttractions, setFilteredAttractions] = useState<Attraction[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
+  // City filter states
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
+  const [selectedCity, setSelectedCity] = useState<string>('all');
+  const [isCityFilterOpen, setIsCityFilterOpen] = useState<boolean>(false);
+
   useEffect(() => {
     setSearchQuery('');
     setIsSearching(false);
+    setSelectedCity('all'); // Reset city filter when category changes
     fetchAttractions(1);
   }, [activeCategory]);
+
+  // Separate effect for city filter changes
+  useEffect(() => {
+    if (selectedCity !== 'all') {
+      fetchAttractions(1); // Fetch with city filter
+    }
+  }, [selectedCity]);
 
   // Helper function to safely get text from object or string
   const getTextContent = (field: any): string => {
@@ -41,7 +54,7 @@ const Attractions: React.FC = () => {
     return '';
   };
 
-  // Fetch data for the selected category with pagination
+  // Fetch data for the selected category with pagination and city filter
   const fetchAttractions = async (page = 1) => {
     setLoading(true);
     setError(null);
@@ -50,8 +63,17 @@ const Attractions: React.FC = () => {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
       const endpoint = activeCategory === 'amusement_park' ? 'amusement-parks' : activeCategory;
       
-      // Use the requested page parameter with 20 results per page
-      const response = await fetch(`${backendUrl}/api/v1/attractions/${endpoint}?page=${page}&limit=20`);
+      // Build query parameters including city filter
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '20'
+      });
+      
+      if (selectedCity !== 'all') {
+        params.append('city', selectedCity);
+      }
+      
+      const response = await fetch(`${backendUrl}/api/v1/attractions/${endpoint}?${params}`);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -63,12 +85,15 @@ const Attractions: React.FC = () => {
       if (activeCategory === 'hotels' && data.data?.hotels) {
         attractionsData = data.data.hotels;
         setPagination(data.data.pagination);
+        setAvailableCities(data.data.availableCities || []);
       } else if (activeCategory === 'restaurants' && data.data?.restaurants) {
         attractionsData = data.data.restaurants;
         setPagination(data.data.pagination);
+        setAvailableCities(data.data.availableCities || []);
       } else if (activeCategory === 'amusement_park' && data.data?.amusementParks) {
         attractionsData = data.data.amusementParks;
         setPagination(data.data.pagination);
+        setAvailableCities(data.data.availableCities || []);
       } else {
         throw new Error('Invalid data format from server');
       }
@@ -98,6 +123,7 @@ const Attractions: React.FC = () => {
         const addressMatch = (attraction.formattedAddress || '').toLowerCase().includes(query);
         const summaryMatch = getTextContent(attraction.editorialSummary).toLowerCase().includes(query);
         const typeMatch = getTextContent(attraction.primaryTypeDisplayName).toLowerCase().includes(query);
+        
         return nameMatch || addressMatch || summaryMatch || typeMatch;
       });
       setFilteredAttractions(filtered);
@@ -120,6 +146,14 @@ const Attractions: React.FC = () => {
     setIsSearching(false);
   };
 
+  const handleCityChange = (city: string) => {
+    setSelectedCity(city);
+    setIsCityFilterOpen(false);
+    // Clear search when changing city
+    setSearchQuery('');
+    setIsSearching(false);
+  };
+
   const getCategoryInfo = (category: AttractionCategory) => {
     switch (category) {
       case 'hotels': 
@@ -131,6 +165,11 @@ const Attractions: React.FC = () => {
       default: 
         return { title: 'Attractions', icon: MapPin };
     }
+  };
+
+  const getSelectedCityDisplay = () => {
+    if (selectedCity === 'all') return 'All Cities';
+    return selectedCity;
   };
 
   return (
@@ -166,39 +205,90 @@ const Attractions: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 relative">
-        {/* Search box */}
-        <form onSubmit={handleSearchSubmit} className="max-w-2xl mx-auto -mt-10 relative z-20 mb-12">
-          <div className="flex items-center bg-white rounded-full shadow-xl border border-gray-200 py-3 px-6">
-            <Search className="h-5 w-5 text-gray-400 mr-3" />
-            <input 
-              type="text" 
-              placeholder={`Search ${getCategoryInfo(activeCategory).title.toLowerCase()} by name...`}
-              className="w-full outline-none bg-transparent text-gray-800"
-              aria-label={`Search ${getCategoryInfo(activeCategory).title.toLowerCase()} by name`}
-              value={searchQuery}
-              onChange={handleSearchChange}
-              disabled={loading}
-            />
-            {searchQuery && (
+        {/* Search and Filter Container */}
+        <div className="max-w-4xl mx-auto -mt-10 relative z-20 mb-12">
+          {/* Search box */}
+          <form onSubmit={handleSearchSubmit} className="mb-4">
+            <div className="flex items-center bg-white rounded-full shadow-xl border border-gray-200 py-3 px-6">
+              <Search className="h-5 w-5 text-gray-400 mr-3" />
+              <input 
+                type="text" 
+                placeholder={`Search ${getCategoryInfo(activeCategory).title.toLowerCase()} by name...`}
+                className="flex-1 outline-none bg-transparent text-gray-800"
+                aria-label={`Search ${getCategoryInfo(activeCategory).title.toLowerCase()} by name`}
+                value={searchQuery}
+                onChange={handleSearchChange}
+                disabled={loading}
+              />
+              {searchQuery && (
+                <button 
+                  type="button" 
+                  onClick={clearSearch}
+                  className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 mr-1"
+                  aria-label="Clear search"
+                  disabled={loading}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
               <button 
-                type="button" 
-                onClick={clearSearch}
-                className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 mr-1"
-                aria-label="Clear search"
+                type="submit"
+                className="bg-green-600 hover:bg-green-700 text-white font-medium rounded-full py-2 px-6 text-sm transition-colors"
                 disabled={loading}
               >
-                <X className="h-4 w-4" />
+                Search
               </button>
-            )}
-            <button 
-              type="submit"
-              className="bg-green-600 hover:bg-green-700 text-white font-medium rounded-full py-2 px-6 text-sm transition-colors"
-              disabled={loading}
-            >
-              Search
-            </button>
+            </div>
+          </form>
+
+          {/* City Filter */}
+          <div className="flex justify-center">
+            <div className="relative">
+              <button
+                onClick={() => setIsCityFilterOpen(!isCityFilterOpen)}
+                className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 rounded-full shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700"
+                disabled={loading}
+              >
+                <MapPinIcon className="h-4 w-4 text-green-600" />
+                <span>{getSelectedCityDisplay()}</span>
+                <svg className={`h-4 w-4 transition-transform ${isCityFilterOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* City Dropdown */}
+              {isCityFilterOpen && (
+                <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-30 max-h-60 overflow-y-auto">
+                  <div className="p-2">
+                    <button
+                      onClick={() => handleCityChange('all')}
+                      className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                        selectedCity === 'all' 
+                          ? 'bg-green-50 text-green-700 font-medium' 
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      All Cities
+                    </button>
+                    {availableCities.map((city) => (
+                      <button
+                        key={city}
+                        onClick={() => handleCityChange(city)}
+                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                          selectedCity === city 
+                            ? 'bg-green-50 text-green-700 font-medium' 
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {city}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </form>
+        </div>
 
         {/* Search results indicator */}
         {isSearching && (
@@ -219,6 +309,23 @@ const Attractions: React.FC = () => {
                 Clear search
               </button>
             )}
+          </div>
+        )}
+
+        {/* City filter indicator */}
+        {selectedCity !== 'all' && !isSearching && (
+          <div className="mb-6 flex items-center justify-between px-4">
+            <div className="text-sm text-gray-600">
+              Showing {getCategoryInfo(activeCategory).title.toLowerCase()} in <span className="font-medium">{selectedCity}</span>
+              {pagination && ` (${pagination.totalItems} total)`}
+            </div>
+            <button 
+              onClick={() => handleCityChange('all')}
+              className="text-sm text-green-700 hover:text-green-800 flex items-center"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Show all cities
+            </button>
           </div>
         )}
 
@@ -319,6 +426,8 @@ const Attractions: React.FC = () => {
             <p className="text-gray-500 max-w-md mx-auto">
               {isSearching 
                 ? `We couldn't find any ${getCategoryInfo(activeCategory).title.toLowerCase()} matching "${searchQuery}". Try a different search term.`
+                : selectedCity !== 'all'
+                ? `We couldn't find any ${getCategoryInfo(activeCategory).title.toLowerCase()} in ${selectedCity}. Try selecting a different city.`
                 : `We couldn't find any ${getCategoryInfo(activeCategory).title.toLowerCase()} in this category. Try another category or refresh the page.`
               }
             </p>
@@ -329,6 +438,14 @@ const Attractions: React.FC = () => {
               >
                 <X className="h-4 w-4 mr-2" />
                 Clear Search
+              </button>
+            ) : selectedCity !== 'all' ? (
+              <button 
+                onClick={() => handleCityChange('all')}
+                className="mt-5 px-5 py-2.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors inline-flex items-center"
+              >
+                <MapPinIcon className="h-4 w-4 mr-2" />
+                Show All Cities
               </button>
             ) : (
               <button 
@@ -376,11 +493,20 @@ const Attractions: React.FC = () => {
           </>
         )}
       </div>
+      
       {/* Detail Modal */}
       {selectedAttraction && (
         <AttractionDetail
           attraction={selectedAttraction}
           onClose={() => setSelectedAttraction(null)}
+        />
+      )}
+
+      {/* Click outside handler for city dropdown */}
+      {isCityFilterOpen && (
+        <div 
+          className="fixed inset-0 z-20" 
+          onClick={() => setIsCityFilterOpen(false)}
         />
       )}
     </div>
