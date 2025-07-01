@@ -31,7 +31,7 @@ const Attractions: React.FC = () => {
   useEffect(() => {
     setSearchQuery('');
     setIsSearching(false);
-    fetchAttractions();
+    fetchAttractions(1);
   }, [activeCategory]);
 
   // Helper function to safely get text from object or string
@@ -41,16 +41,18 @@ const Attractions: React.FC = () => {
     return '';
   };
 
-  // Fetch all data for the selected category
-  const fetchAttractions = async () => {
+  // Fetch data for the selected category with pagination
+  const fetchAttractions = async (page = 1) => {
     setLoading(true);
     setError(null);
 
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
       const endpoint = activeCategory === 'amusement_park' ? 'amusement-parks' : activeCategory;
-      // Fetch a large number to get all results
-      const response = await fetch(`${backendUrl}/api/v1/attractions/${endpoint}?page=1&limit=1000`);
+      
+      // Use the requested page parameter
+      const response = await fetch(`${backendUrl}/api/v1/attractions/${endpoint}?page=${page}&limit=20`);
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData?.message || `Server returned ${response.status}`);
@@ -149,7 +151,7 @@ const Attractions: React.FC = () => {
               <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm text-white">
                 <span>Data source: {dataSource}</span>
                 <button 
-                  onClick={() => fetchAttractions()} 
+                  onClick={() => fetchAttractions(1)} 
                   className="ml-3 p-1.5 rounded-full hover:bg-white/10 transition-colors"
                   title="Refresh data"
                   aria-label="Refresh data"
@@ -264,7 +266,7 @@ const Attractions: React.FC = () => {
             <div className="text-sm text-gray-600">
               {isSearching 
                 ? `${filteredAttractions.length} result${filteredAttractions.length !== 1 ? 's' : ''}`
-                : `${attractions.length} total`
+                : pagination ? `${pagination.totalItems} total` : `${attractions.length} shown`
               }
             </div>
           )}
@@ -292,7 +294,7 @@ const Attractions: React.FC = () => {
               <h3 className="text-lg font-medium text-red-800 mb-2">Unable to load attractions</h3>
               <p className="text-red-600">{error}</p>
               <button 
-                onClick={() => fetchAttractions()}
+                onClick={() => fetchAttractions(1)}
                 className="mt-4 px-5 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors flex items-center"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -330,7 +332,7 @@ const Attractions: React.FC = () => {
               </button>
             ) : (
               <button 
-                onClick={() => fetchAttractions()}
+                onClick={() => fetchAttractions(1)}
                 className="mt-5 px-5 py-2.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors inline-flex items-center"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -358,6 +360,19 @@ const Attractions: React.FC = () => {
                 </div>
               ))}
             </div>
+
+            {/* Backend pagination - Only show for non-search results */}
+            {!isSearching && pagination && pagination.totalPages > 1 && (
+              <div className="mt-12 flex justify-center">
+                <Pagination
+                  currentPage={pagination.currentPage}
+                  totalPages={pagination.totalPages}
+                  onPageChange={(page) => fetchAttractions(page)}
+                  itemsPerPage={pagination.itemsPerPage}
+                  totalItems={pagination.totalItems}
+                />
+              </div>
+            )}
           </>
         )}
       </div>
