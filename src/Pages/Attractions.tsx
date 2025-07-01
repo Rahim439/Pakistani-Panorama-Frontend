@@ -50,7 +50,7 @@ const Attractions: React.FC = () => {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
       const endpoint = activeCategory === 'amusement_park' ? 'amusement-parks' : activeCategory;
       
-      // Use the requested page parameter
+      // Use the requested page parameter with 20 results per page
       const response = await fetch(`${backendUrl}/api/v1/attractions/${endpoint}?page=${page}&limit=20`);
       
       if (!response.ok) {
