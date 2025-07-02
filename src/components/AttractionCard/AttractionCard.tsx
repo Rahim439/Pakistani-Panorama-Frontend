@@ -135,8 +135,7 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, onClick, ca
           </div>
         )}
 
-        {/* Category Badge */}
-        {getCategoryBadge()}
+        
 
         {/* Action Buttons Overlay */}
         <div className={`absolute top-3 right-3 flex space-x-2 transition-all duration-300 ${
