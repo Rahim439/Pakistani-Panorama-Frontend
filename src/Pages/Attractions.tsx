@@ -240,54 +240,61 @@ const Attractions: React.FC = () => {
               </button>
             </div>
           </form>
+// Add this after the search box in the Search and Filter Container section
+{/* City Filter Dropdown */}
+{!isSearching && availableCities.length > 0 && (
+  <div className="mt-4 relative">
+    <button
+      onClick={() => setIsCityFilterOpen(!isCityFilterOpen)}
+      className="flex items-center justify-between w-full md:w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2.5 px-4 text-left focus:outline-none focus:ring-2 focus:ring-green-500"
+      disabled={loading}
+    >
+      <div className="flex items-center">
+        <MapPinIcon className="h-4 w-4 text-gray-400 mr-2" />
+        <span className="text-sm text-gray-700">
+          {getSelectedCityDisplay()}
+        </span>
+      </div>
+      <svg 
+        className={`h-4 w-4 text-gray-400 transition-transform ${isCityFilterOpen ? 'rotate-180' : ''}`} 
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
 
-          {/* City Filter */}
-          <div className="flex justify-center">
-            <div className="relative">
-              <button
-                onClick={() => setIsCityFilterOpen(!isCityFilterOpen)}
-                className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 rounded-full shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium text-gray-700"
-                disabled={loading}
-              >
-                <MapPinIcon className="h-4 w-4 text-green-600" />
-                <span>{getSelectedCityDisplay()}</span>
-                <svg className={`h-4 w-4 transition-transform ${isCityFilterOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {/* City Dropdown */}
-              {isCityFilterOpen && (
-                <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-30 max-h-60 overflow-y-auto">
-                  <div className="p-2">
-                    <button
-                      onClick={() => handleCityChange('all')}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                        selectedCity === 'all' 
-                          ? 'bg-green-50 text-green-700 font-medium' 
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      All Cities
-                    </button>
-                    {availableCities.map((city) => (
-                      <button
-                        key={city}
-                        onClick={() => handleCityChange(city)}
-                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                          selectedCity === city 
-                            ? 'bg-green-50 text-green-700 font-medium' 
-                            : 'text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        {city}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+    {/* Dropdown Menu */}
+    {isCityFilterOpen && (
+      <div className="absolute top-full left-0 right-0 md:right-auto md:w-64 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-30 max-h-60 overflow-y-auto">
+        {/* All Cities Option */}
+        <button
+          onClick={() => handleCityChange('all')}
+          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+            selectedCity === 'all' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'
+          }`}
+        >
+          All Cities
+        </button>
+        
+        {/* Individual Cities */}
+        {availableCities.map((city) => (
+          <button
+            key={city}
+            onClick={() => handleCityChange(city)}
+            className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors border-t border-gray-100 ${
+              selectedCity === city ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'
+            }`}
+          >
+            {city}
+          </button>
+        ))}
+      </div>
+    )}
+  </div>
+)}
+          
         </div>
 
         {/* Search results indicator */}
