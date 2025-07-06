@@ -36,14 +36,14 @@ const Attractions: React.FC = () => {
   useEffect(() => {
     setSearchQuery('');
     setIsSearching(false);
-    setSelectedCity('all'); // Reset city filter when category changes
+    setSelectedCity('all');
     fetchAttractions(1);
   }, [activeCategory]);
 
   // Separate effect for city filter changes
   useEffect(() => {
     if (selectedCity !== 'all') {
-      fetchAttractions(1); // Fetch with city filter
+      fetchAttractions(1);
     }
   }, [selectedCity]);
 
@@ -71,6 +71,7 @@ const Attractions: React.FC = () => {
       
       if (selectedCity !== 'all') {
         params.append('city', selectedCity);
+        console.log(`Fetching ${endpoint} for city: ${selectedCity}`);
       }
       
       const response = await fetch(`${backendUrl}/api/v1/attractions/${endpoint}?${params}`);
@@ -81,21 +82,34 @@ const Attractions: React.FC = () => {
       }
       const data = await response.json();
 
+      console.log(`Received data for ${endpoint}:`, {
+        pagination: data.data?.pagination,
+        cityCount: data.data?.availableCities?.length,
+        resultCount: data.data?.hotels?.length || data.data?.restaurants?.length || data.data?.amusementParks?.length || 0
+      });
+
       let attractionsData: Attraction[] = [];
+      let citiesData: string[] = [];
+      
       if (activeCategory === 'hotels' && data.data?.hotels) {
         attractionsData = data.data.hotels;
         setPagination(data.data.pagination);
-        setAvailableCities(data.data.availableCities || []);
+        citiesData = data.data.availableCities || [];
       } else if (activeCategory === 'restaurants' && data.data?.restaurants) {
         attractionsData = data.data.restaurants;
         setPagination(data.data.pagination);
-        setAvailableCities(data.data.availableCities || []);
+        citiesData = data.data.availableCities || [];
       } else if (activeCategory === 'amusement_park' && data.data?.amusementParks) {
         attractionsData = data.data.amusementParks;
         setPagination(data.data.pagination);
-        setAvailableCities(data.data.availableCities || []);
+        citiesData = data.data.availableCities || [];
       } else {
         throw new Error('Invalid data format from server');
+      }
+
+      if (citiesData.length > 0) {
+        setAvailableCities(citiesData);
+        console.log(`Updated available cities: ${citiesData.length} cities found`);
       }
 
       setAttractions(attractionsData);
@@ -107,6 +121,7 @@ const Attractions: React.FC = () => {
         setDataSource('Google Places API');
       }
     } catch (error: any) {
+      console.error("Error fetching attractions:", error);
       setError(error.message || 'Failed to load attractions');
     } finally {
       setLoading(false);
@@ -240,61 +255,97 @@ const Attractions: React.FC = () => {
               </button>
             </div>
           </form>
-// Add this after the search box in the Search and Filter Container section
-{/* City Filter Dropdown */}
-{!isSearching && availableCities.length > 0 && (
-  <div className="mt-4 relative">
-    <button
-      onClick={() => setIsCityFilterOpen(!isCityFilterOpen)}
-      className="flex items-center justify-between w-full md:w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2.5 px-4 text-left focus:outline-none focus:ring-2 focus:ring-green-500"
-      disabled={loading}
-    >
-      <div className="flex items-center">
-        <MapPinIcon className="h-4 w-4 text-gray-400 mr-2" />
-        <span className="text-sm text-gray-700">
-          {getSelectedCityDisplay()}
-        </span>
-      </div>
-      <svg 
-        className={`h-4 w-4 text-gray-400 transition-transform ${isCityFilterOpen ? 'rotate-180' : ''}`} 
-        fill="none" 
-        stroke="currentColor" 
-        viewBox="0 0 24 24"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-      </svg>
-    </button>
 
-    {/* Dropdown Menu */}
-    {isCityFilterOpen && (
-      <div className="absolute top-full left-0 right-0 md:right-auto md:w-64 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-30 max-h-60 overflow-y-auto">
-        {/* All Cities Option */}
-        <button
-          onClick={() => handleCityChange('all')}
-          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
-            selectedCity === 'all' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'
-          }`}
-        >
-          All Cities
-        </button>
-        
-        {/* Individual Cities */}
-        {availableCities.map((city) => (
-          <button
-            key={city}
-            onClick={() => handleCityChange(city)}
-            className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors border-t border-gray-100 ${
-              selectedCity === city ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'
-            }`}
-          >
-            {city}
-          </button>
-        ))}
-      </div>
-    )}
-  </div>
-)}
-          
+          {/* City Filter Dropdown */}
+          {!isSearching && (
+            <div className="flex flex-col items-center mt-4">
+              <div className="relative w-full md:w-64">
+                <button
+                  onClick={() => setIsCityFilterOpen(!isCityFilterOpen)}
+                  className="flex items-center justify-between w-full bg-white rounded-lg shadow-md border border-gray-200 py-3 px-4 text-left transition-all hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  disabled={loading || availableCities.length === 0}
+                >
+                  <div className="flex items-center">
+                    <MapPinIcon className="h-5 w-5 text-green-500 mr-2" />
+                    <span className="font-medium text-gray-700">
+                      {selectedCity === 'all' ? 'All Cities' : selectedCity}
+                    </span>
+                    {selectedCity !== 'all' && (
+                      <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full">
+                        Filtered
+                      </span>
+                    )}
+                  </div>
+                  <svg 
+                    className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${isCityFilterOpen ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Dropdown Menu */}
+                {isCityFilterOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-30 max-h-60 overflow-y-auto">
+                    <div className="p-2 sticky top-0 bg-white border-b border-gray-100">
+                      <div className="text-xs font-medium text-gray-500 mb-1 px-2">Filter by city</div>
+                      <button
+                        onClick={() => handleCityChange('all')}
+                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                          selectedCity === 'all' 
+                            ? 'bg-green-50 text-green-700 font-medium' 
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          <MapPinIcon className="h-4 w-4 mr-2" />
+                          <span>All Cities</span>
+                        </div>
+                      </button>
+                    </div>
+                    
+                    <div className="p-2">
+                      {availableCities.length === 0 ? (
+                        <div className="text-center py-4 text-sm text-gray-500">
+                          Loading cities...
+                        </div>
+                      ) : (
+                        availableCities.map((city) => (
+                          <button
+                            key={city}
+                            onClick={() => handleCityChange(city)}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                              selectedCity === city 
+                                ? 'bg-green-50 text-green-700 font-medium' 
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {city}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Selected city indicator below dropdown */}
+              {selectedCity !== 'all' && !loading && (
+                <div className="mt-3 text-sm text-gray-600 flex items-center">
+                  <span>Showing {pagination?.totalItems || filteredAttractions.length} results in</span>
+                  <span className="font-medium mx-1">{selectedCity}</span>
+                  <button 
+                    onClick={() => handleCityChange('all')}
+                    className="ml-2 text-green-600 hover:text-green-700"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Search results indicator */}
@@ -316,23 +367,6 @@ const Attractions: React.FC = () => {
                 Clear search
               </button>
             )}
-          </div>
-        )}
-
-        {/* City filter indicator */}
-        {selectedCity !== 'all' && !isSearching && (
-          <div className="mb-6 flex items-center justify-between px-4">
-            <div className="text-sm text-gray-600">
-              Showing {getCategoryInfo(activeCategory).title.toLowerCase()} in <span className="font-medium">{selectedCity}</span>
-              {pagination && ` (${pagination.totalItems} total)`}
-            </div>
-            <button 
-              onClick={() => handleCityChange('all')}
-              className="text-sm text-green-700 hover:text-green-800 flex items-center"
-            >
-              <X className="h-4 w-4 mr-1" />
-              Show all cities
-            </button>
           </div>
         )}
 
@@ -389,7 +423,7 @@ const Attractions: React.FC = () => {
         {/* Loading State */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-32">
-            <div className="spinner"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
             <p className="mt-6 text-green-700 font-medium">
               Loading amazing attractions...
             </p>
