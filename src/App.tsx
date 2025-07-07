@@ -77,7 +77,7 @@ const App = () => {
           />
           
           {/* Support Routes from Footer */}
-          <Route path="/help" element={<SearchBar />} /> {/* Will be replaced with Help component when created */}
+          
           <Route path="/faq" element={<SearchBar />} /> {/* Will be replaced with FAQ component when created */}
           
           {/* This catch-all route should be the very last route */}
