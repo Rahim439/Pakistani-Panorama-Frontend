@@ -49,11 +49,7 @@ const App = () => {
           <Route path="/bookings" element={<Features/>} /> {/* Will be replaced with Bookings component when created */}
           <Route path="/emergency" element={<Emergency />} /> {/* Will be replaced with Emergency component when created */}
           
-          {/* Other General Routes */}
-          <Route path="/lahore" element={<SearchBar />} />
-          <Route path="/things-to-do" element={<SearchBar />} />
-          <Route path="/restaurants" element={<SearchBar />} />
-          <Route path="/flights" element={<SearchBar />} />
+          
           
           {/* Auth Routes - Now inside the Layout */}
           <Route path="/login" element={<Login />} />
